@@ -27,12 +27,10 @@ interface OrderStatus {
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
 /**
- * Returns the index (0-3) of the last completed step, or -1 if canceled/failed.
+ * Returns the index (0-1) of the last completed step, or -1 if canceled/failed.
  *
- *  0 → Order Placed   (PROPOSED — payment received)
- *  1 → Confirmed      (RESERVED — merchant acknowledged)
- *  2 → Ready          (PREPARED — ready for pickup)
- *  3 → Picked Up      (COMPLETED)
+ *  0 → Order Placed     (PROPOSED / RESERVED — payment received, being prepared)
+ *  1 → Ready for Pickup (PREPARED / COMPLETED — come grab your order)
  * -1 → Canceled / Failed
  */
 function activeStep(status: OrderStatus): number {
@@ -44,20 +42,19 @@ function activeStep(status: OrderStatus): number {
     return -1;
   }
   if (
+    status.fulfillmentState === "PREPARED" ||
     status.fulfillmentState === "COMPLETED" ||
     status.orderState === "COMPLETED"
   ) {
-    return 3;
+    return 1;
   }
-  if (status.fulfillmentState === "PREPARED") return 2;
-  if (status.fulfillmentState === "RESERVED") return 1;
-  return 0; // PROPOSED or null
+  return 0; // PROPOSED, RESERVED, or null
 }
 
 /** Returns true when no further updates are expected. */
 function isTerminal(status: OrderStatus): boolean {
   const step = activeStep(status);
-  return step === 3 || step === -1;
+  return step === 1 || step === -1;
 }
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
@@ -66,22 +63,12 @@ const STEPS = [
   {
     label: "Order Placed",
     description: "Your payment was received",
-    activeDescription: "We've got your order!",
-  },
-  {
-    label: "Confirmed",
-    description: "Waiting for the shop",
-    activeDescription: "The shop has your order",
+    activeDescription: "We've got your order — hang tight!",
   },
   {
     label: "Ready for Pickup",
     description: "Being prepared",
     activeDescription: "Come grab your order!",
-  },
-  {
-    label: "Picked Up",
-    description: "Enjoy!",
-    activeDescription: "Thanks for visiting Leaf & Brew!",
   },
 ];
 
@@ -130,6 +117,7 @@ function StepIndicator({
 }) {
   const isDone = stepIndex < currentStep;
   const isActive = stepIndex === currentStep;
+  const isLastStep = stepIndex === STEPS.length - 1;
 
   if (isCanceled && stepIndex > 0) {
     return (
@@ -139,7 +127,7 @@ function StepIndicator({
     );
   }
 
-  if (isDone) {
+  if (isDone || (isActive && isLastStep)) {
     return (
       <div className="w-8 h-8 rounded-full bg-[#2D6A4F] flex items-center justify-center text-white">
         <CheckIcon />
@@ -164,7 +152,7 @@ function StepIndicator({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-const POLL_INTERVAL_MS = 5000;
+const POLL_INTERVAL_MS = 2000;
 
 export default function OrderStatusPage() {
   const { orderId } = useParams<{ orderId: string }>();
@@ -213,7 +201,7 @@ export default function OrderStatusPage() {
 
   const step = status ? activeStep(status) : 0;
   const isCanceled = step === -1;
-  const isComplete = step === 3;
+  const isComplete = step === 1;
 
   return (
     <main className="min-h-screen bg-[#F8F5EE] py-8 px-4">
