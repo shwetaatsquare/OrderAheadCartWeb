@@ -114,6 +114,7 @@ export default async function CheckoutPage({
           locationId: clonedOrder.locationId!,
           version: clonedOrder.version,
           state: "OPEN",
+          source: { name: "LeafAndBrewApp" },
           // Re-attach the original fulfillment (uid omitted — Square assigns a new one)
           ...(originalFulfillment && {
             fulfillments: [

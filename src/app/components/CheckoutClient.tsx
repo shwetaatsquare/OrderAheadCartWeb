@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 
 // ─── Square Web Payments SDK types ────────────────────────────────────────────
 
@@ -343,8 +344,8 @@ export function CheckoutClient({
   const [isCardReady, setIsCardReady] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [orderSuccess, setOrderSuccess] = useState(false);
 
+  const router = useRouter();
   const cardRef = useRef<SquareCard | null>(null);
 
   // Tip is calculated as a % of the order subtotal (before tax)
@@ -407,27 +408,13 @@ export function CheckoutClient({
         return;
       }
 
-      setOrderSuccess(true);
+      router.push(`/order/${orderId}`);
     } catch (err) {
       console.error("Payment error:", err);
       setPaymentError("An unexpected error occurred. Please try again.");
     } finally {
       setIsProcessing(false);
     }
-  }
-
-  // ── Success view ──────────────────────────────────────────────────────────
-  if (orderSuccess) {
-    return (
-      <main className="min-h-screen bg-[#F8F5EE] py-8 px-4">
-        <div className="max-w-md mx-auto space-y-5">
-          <PageHeader />
-          <section className="bg-white rounded-2xl shadow-sm border border-[#E8F0EB] px-5 py-5">
-            <OrderSuccess totalCents={finalTotalCents} pickupSchedule={pickupSchedule} />
-          </section>
-        </div>
-      </main>
-    );
   }
 
   // ── Checkout view ─────────────────────────────────────────────────────────
